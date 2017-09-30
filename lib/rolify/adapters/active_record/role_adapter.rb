@@ -105,17 +105,27 @@ module Rolify
 
       def build_query(role, resource = nil)
         return [ "#{role_table}.name = ?", [ role ] ] if resource == :any
-        query = "((#{role_table}.name = ?) AND (#{role_table}.resource_type IS NULL) AND (#{role_table}.resource_id IS NULL))"
-        values = [ role ]
+        unless user_class.strict_rolify && resource
+          query = "((#{role_table}.name = ?) AND (#{role_table}.resource_type IS NULL) AND (#{role_table}.resource_id IS NULL))"
+          values = [ role ]
+        else
+          query = ''
+          values = []
+        end
         if resource
-          query.insert(0, "(")
-          query += " OR ((#{role_table}.name = ?) AND (#{role_table}.resource_type = ?) AND (#{role_table}.resource_id IS NULL))"
+          unless user_class.strict_rolify
+            query.insert(0, "(")
+            query += " OR "
+          end
+          query += "((#{role_table}.name = ?) AND (#{role_table}.resource_type = ?) AND (#{role_table}.resource_id IS NULL))"
           values << role << (resource.is_a?(Class) ? resource.to_s : resource.class.name)
           if !resource.is_a? Class
             query += " OR ((#{role_table}.name = ?) AND (#{role_table}.resource_type = ?) AND (#{role_table}.resource_id = ?))"
             values << role << resource.class.name << resource.id
           end
-          query += ")"
+          unless user_class.strict_rolify
+            query += ")"
+          end
         end
         [ query, values ]
       end
